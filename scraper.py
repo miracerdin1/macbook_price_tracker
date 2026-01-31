@@ -117,8 +117,11 @@ def scrape_product(url):
     # Random sleep before starting to feel human
     time.sleep(random.uniform(1, 4))
     
+    import os
+    is_ci = os.getenv("GITHUB_ACTIONS") == "true"
+    
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=is_ci) # CI'da headless, lokalde headed
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
             # Daha büyük ekran simülasyonu
