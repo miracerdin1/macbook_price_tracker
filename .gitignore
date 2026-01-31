@@ -8,3 +8,4 @@ start_background.bat
 stop_bot.bat
 view_logs.bat
 deploy_to_github.bat
+prices.db

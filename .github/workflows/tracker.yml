@@ -38,7 +38,7 @@ jobs:
         run: |
           git config --global user.name "Fiyat Takip Botu"
           git config --global user.email "bot@github.com"
-          git add prices.db
+          git add -f prices.db
           # Eğer değişiklik varsa commit yap, yoksa hata verme
           git commit -m "Veritabanı güncellendi: $(date)" || exit 0
           git push
