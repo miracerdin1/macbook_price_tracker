@@ -1,0 +1,44 @@
+name: MacBook Price Tracker
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # Her 15 dakikada bir çalış
+  workflow_dispatch: # Manuel tetikleme için
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Veritabanını güncellemek ve pushlamak için gerekli
+
+    steps:
+      - name: Depoyu Çek (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Python Kurulumu
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Bağımlılıkları Yükle
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Botu Çalıştır
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python main.py --once
+
+      - name: Veritabanını Kaydet (Commit & Push)
+        # Fiyat geçmişini kaybetmemek için DB'yi commitlemek gerekir. Aksi takdirde her çalışmada sıfırlanır.
+        run: |
+          git config --global user.name "Fiyat Takip Botu"
+          git config --global user.email "bot@github.com"
+          git add prices.db
+          # Eğer değişiklik varsa commit yap, yoksa hata verme
+          git commit -m "Veritabanı güncellendi: $(date)" || exit 0
+          git push

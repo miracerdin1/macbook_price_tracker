@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.log
+*.pid
+debug_*.html
+debug_*.png
+start_background.bat
+stop_bot.bat
+view_logs.bat
+deploy_to_github.bat
