@@ -308,6 +308,13 @@ def scrape_product(url):
                 return found_price, product_name
             else:
                 print(f"Price NOT FOUND: {url}")
+                # Hata durumunda sayfa başlığı ve içeriğinden ipucu al
+                title = page.title()
+                print(f"DEBUG: Sayfa Başlığı: {title}")
+                
+                content_text = page.locator("body").inner_text()[:500].replace("\n", " ")
+                print(f"DEBUG: Sayfa İçeriği (İlk 500): {content_text}")
+                
                 browser.close()
                 return None, product_name
 
