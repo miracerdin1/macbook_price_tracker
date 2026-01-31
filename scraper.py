@@ -121,14 +121,39 @@ def scrape_product(url):
     is_ci = os.getenv("GITHUB_ACTIONS") == "true"
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=is_ci) # CI'da headless, lokalde headed
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-            # Daha büyük ekran simülasyonu
-            viewport={'width': 1920, 'height': 1080}
+        # Anti-detection args
+        browser = p.chromium.launch(
+            headless=is_ci,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox"
+            ]
         )
         
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            viewport={'width': 1920, 'height': 1080},
+            locale="tr-TR",
+            timezone_id="Europe/Istanbul",
+            extra_http_headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Sec-Ch-Ua": '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1"
+            }
+        )
+        
+        # Stealth scripts
         page = context.new_page()
+        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
         try:
             print(f"Gidiliyor: {url}")
             page.goto(url, timeout=60000)
