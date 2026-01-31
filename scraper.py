@@ -150,9 +150,19 @@ def scrape_product(url):
             }
         )
         
-        # Stealth scripts
+        # Stealth scripts to mask Linux environment
         page = context.new_page()
-        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+            Object.defineProperty(navigator, 'platform', {
+                get: () => 'Win32'
+            });
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['tr-TR', 'tr', 'en-US', 'en']
+            });
+        """)
         
         try:
             print(f"Gidiliyor: {url}")
