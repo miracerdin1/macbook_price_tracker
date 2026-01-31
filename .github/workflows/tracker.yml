@@ -42,3 +42,13 @@ jobs:
           # Eğer değişiklik varsa commit yap, yoksa hata verme
           git commit -m "Veritabanı güncellendi: $(date)" || exit 0
           git push
+
+      - name: Debug Dosyalarini Yukle (Hata Analizi)
+        if: always() # Hata olsa bile çalışsın
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-files
+          path: |
+            debug_*.html
+            debug_*.png
+            bot.log
