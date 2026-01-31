@@ -169,6 +169,16 @@ def scrape_product(url):
             page.goto(url, timeout=60000)
             page.wait_for_load_state("domcontentloaded")
             time.sleep(5) # Allow JS to execute completely
+
+            # WAF / Cloudflare Check
+            # "Bir dakika lütfen..." veya "Just a moment..." uyarısı varsa bekle
+            try:
+                title = page.title()
+                if "Bir dakika" in title or "Just a moment" in title:
+                    print(f"DEBUG: WAF Takildi ({title}), 30 saniye bekleniyor...")
+                    time.sleep(30)
+            except:
+                pass
             
             # Save HTML immediately for debugging
             domain = "vatan" if "vatanbilgisayar" in url else "mediamarkt" if "mediamarkt" in url else "other"
