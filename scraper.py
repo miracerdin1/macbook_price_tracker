@@ -181,7 +181,7 @@ def scrape_product(url):
                 pass
             
             # Save HTML immediately for debugging
-            domain = "vatan" if "vatanbilgisayar" in url else "mediamarkt" if "mediamarkt" in url else "other"
+            domain = "vatan" if "vatanbilgisayar" in url else "mediamarkt" if "mediamarkt" in url else "pt" if "pt.com.tr" in url else "other"
             debug_filename = f"debug_{domain}_latest.html"
             with open(debug_filename, "w", encoding="utf-8") as f:
                 f.write(page.content())
@@ -196,38 +196,52 @@ def scrape_product(url):
                 for i, script in enumerate(json_ld_scripts):
                     try:
                         data = json.loads(script)
-                        # MediaMarkt structure: BuyAction -> object(Product) -> offers -> price
-                        if data.get("@type") == "BuyAction" and "object" in data:
-                            product_data = data["object"]
-                            if "offers" in product_data:
-                                price_raw = product_data["offers"].get("price")
-                                if price_raw:
-                                    found_price = float(price_raw)
-                                    print(f"DEBUG: JSON-LD found price (MediaMarkt): {found_price}")
-                                    
-                            if "name" in product_data:
-                                product_name = product_data["name"]
+                        
+                        # Handle @graph arrays (e.g. pt.com.tr)
+                        items_to_check = [data]
+                        if isinstance(data, dict) and "@graph" in data:
+                            items_to_check = data["@graph"]
+                        elif isinstance(data, list):
+                            items_to_check = data
+                        
+                        for item in items_to_check:
+                            if not isinstance(item, dict):
+                                continue
+                            # MediaMarkt structure: BuyAction -> object(Product) -> offers -> price
+                            if item.get("@type") == "BuyAction" and "object" in item:
+                                product_data = item["object"]
+                                if "offers" in product_data:
+                                    price_raw = product_data["offers"].get("price")
+                                    if price_raw:
+                                        found_price = float(price_raw)
+                                        print(f"DEBUG: JSON-LD found price (MediaMarkt): {found_price}")
+                                        
+                                if "name" in product_data:
+                                    product_name = product_data["name"]
 
-                        # Standard Product structure (Vatan etc.)
-                        elif data.get("@type") == "Product":
-                            if "offers" in data:
-                                offers = data["offers"]
-                                # Single offer content
-                                if isinstance(offers, dict):
-                                    price_raw = offers.get("price")
-                                    if price_raw:
-                                        found_price = float(price_raw)
-                                        print(f"DEBUG: JSON-LD found price (Standard): {found_price}")
-                                # List of offers
-                                elif isinstance(offers, list) and len(offers) > 0:
-                                    price_raw = offers[0].get("price")
-                                    if price_raw:
-                                        found_price = float(price_raw)
-                                        print(f"DEBUG: JSON-LD found price (List): {found_price}")
-                            
-                            if "name" in data:
-                                product_name = data["name"]
+                            # Standard Product structure (Vatan, pt.com.tr etc.)
+                            elif item.get("@type") == "Product":
+                                if "offers" in item:
+                                    offers = item["offers"]
+                                    # Single offer content
+                                    if isinstance(offers, dict):
+                                        price_raw = offers.get("price")
+                                        if price_raw:
+                                            found_price = float(price_raw)
+                                            print(f"DEBUG: JSON-LD found price (Standard): {found_price}")
+                                    # List of offers
+                                    elif isinstance(offers, list) and len(offers) > 0:
+                                        price_raw = offers[0].get("price")
+                                        if price_raw:
+                                            found_price = float(price_raw)
+                                            print(f"DEBUG: JSON-LD found price (List): {found_price}")
                                 
+                                if "name" in item:
+                                    product_name = item["name"]
+                                    
+                            if found_price > 0:
+                                break
+                        
                         if found_price > 0:
                             break
                     except json.JSONDecodeError:
@@ -311,6 +325,44 @@ def scrape_product(url):
                                     found_price = p
                                     print(f"DEBUG: CSS found price (MediaMarkt): {found_price}")
                                     break
+
+                elif "pt.com.tr" in url:
+                    # PT.com.tr: Price is in Open Graph meta tags
+                    meta_price = page.locator("meta[property='product:price:amount']").first
+                    if meta_price.count() > 0:
+                        content = meta_price.get_attribute("content")
+                        if content:
+                            found_price = float(content)
+                            print(f"DEBUG: Meta tag found price (PT): {found_price}")
+                    
+                    # Fallback: try CSS selectors
+                    if found_price == 0:
+                        pt_selectors = [
+                            ".price ins .amount",
+                            ".price .amount",
+                            "p.price .amount",
+                            ".summary .price",
+                            ".woocommerce-Price-amount"
+                        ]
+                        for sel in pt_selectors:
+                            try:
+                                elem = page.locator(sel).first
+                                if elem.is_visible():
+                                    found_price = clean_price(elem.inner_text())
+                                    if found_price > 0:
+                                        print(f"DEBUG: CSS found price (PT): {found_price}")
+                                        break
+                            except:
+                                continue
+                    
+                    # Get product name
+                    if product_name == "Bilinmeyen Ürün":
+                        try:
+                            name_elem = page.locator("h1.product_title, h1.entry-title, h1").first
+                            if name_elem.is_visible():
+                                product_name = name_elem.inner_text().strip()
+                        except:
+                            pass
 
             if found_price > 0:
                 print(f"Success: {product_name} - {found_price} TL")
